@@ -71,6 +71,7 @@ func checkDeprecations(args []string) {
 	}
 }
 
+//main函数
 func main() {
 	defer exit.Recover()
 
