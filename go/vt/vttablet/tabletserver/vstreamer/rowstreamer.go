@@ -108,6 +108,7 @@ func (rs *rowStreamer) Stream() error {
 	if err := rs.se.Open(); err != nil {
 		return err
 	}
+	//查询重写在这个方法里
 	if err := rs.buildPlan(); err != nil {
 		return err
 	}
@@ -119,6 +120,7 @@ func (rs *rowStreamer) Stream() error {
 	if _, err := conn.ExecuteFetch("set names 'binary'", 1, false); err != nil {
 		return err
 	}
+	//执行select查询
 	return rs.streamQuery(conn, rs.send)
 }
 
@@ -175,6 +177,9 @@ func (rs *rowStreamer) buildPlan() error {
 	if err != nil {
 		return err
 	}
+	//产生新的查询语句
+	//select * from customer where in_keyrange('80-') ==>
+	//select order_id, customer_id, sku, price from corder order by order_id
 	rs.sendQuery, err = rs.buildSelect()
 	if err != nil {
 		return err
@@ -289,6 +294,7 @@ func (rs *rowStreamer) streamQuery(conn *snapshotConn, send func(*binlogdatapb.V
 		return err
 	}
 
+	//select order_id, customer_id, sku, price from corder order by order_id
 	log.Infof("Streaming query: %v\n", rs.sendQuery)
 	gtid, rotatedLog, err := conn.streamWithSnapshot(rs.ctx, rs.plan.Table.Name, rs.sendQuery)
 	if rotatedLog {
@@ -356,6 +362,7 @@ func (rs *rowStreamer) streamQuery(conn *snapshotConn, send func(*binlogdatapb.V
 		if mysqlrow != nil {
 			mysqlrow = mysqlrow[:0]
 		}
+		//一行一行获取
 		mysqlrow, err = conn.FetchNext(mysqlrow)
 		if err != nil {
 			return err
@@ -369,6 +376,7 @@ func (rs *rowStreamer) streamQuery(conn *snapshotConn, send func(*binlogdatapb.V
 			lastpk[i] = mysqlrow[pk]
 		}
 		// Reuse the vstreamer's filter.
+		//过滤row
 		ok, err := rs.plan.filter(mysqlrow, filtered, charsets)
 		if err != nil {
 			return err
@@ -399,6 +407,7 @@ func (rs *rowStreamer) streamQuery(conn *snapshotConn, send func(*binlogdatapb.V
 	}
 
 	if rowCount > 0 {
+		//保存过滤后的rows
 		response.Rows = rows[:rowCount]
 		response.Lastpk = sqltypes.RowToProto3(lastpk)
 
